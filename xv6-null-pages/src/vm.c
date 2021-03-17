@@ -10,10 +10,6 @@
 extern char data[];  // defined by kernel.ld
 pde_t *kpgdir;  // for use in scheduler()
 
-int sys_mprotect(void *addr, int len){return 0;}
-int sys_munprotect(void *addr, int len){return 0;}
-
-
 // Set up CPU's kernel segment descriptors.
 // Run once on entry on each CPU.
 void
@@ -388,6 +384,33 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   }
   return 0;
 }
+
+int sys_mprotect(void *addr, int len)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  pte_t *pte;
+  uint i;
+  for(i = PGSIZE; i < len; i += PGSIZE){
+    pte = walkpgdir(pgdir, (void *)( (uint)addr + i), 0);
+    *pte &= ~PTE_W;
+  }
+
+  return 0;
+}
+int sys_munprotect(void *addr, int len)
+{
+  struct proc *curproc = myproc();
+  pde_t *pgdir = curproc->pgdir;
+  pte_t *pte;
+  uint i;
+  for(i = PGSIZE; i < len; i += PGSIZE){
+    pte = walkpgdir(pgdir, (void *)( (uint)addr + i), 0);
+    *pte |= PTE_W;
+  }
+  return 0;
+}
+
 
 //PAGEBREAK!
 // Blank page.
