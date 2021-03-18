@@ -385,16 +385,26 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-int sys_mprotect(void *addr, int len)//insert max address space checking
+int sys_mprotect(void)//(void *addr, int len)//insert max address space checking
 {
+
+  int len;
+  void *addr;
+  char* argaddr;
+  if(argint(1, &len) < 0 || argptr(0, &argaddr, 1) < 0)
+    return -2;
+  addr= (void*) argaddr;
+
   struct proc *curproc = myproc();
   pde_t *pgdir = curproc->pgdir;
   pte_t *pte;
   uint i;
   uint int_addr= (uint)addr;
-  if(int_addr%PGSIZE ==0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+  cprintf( "print addr %d %d\n", int_addr, len);
+  if(int_addr%PGSIZE ==0 ){//|| int_addr <0x1000) || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
     return -1;
   }
+  return int_addr;
 
   for(i = PGSIZE; i < len*PGSIZE; i += PGSIZE){
     void * naddr = (void *)( int_addr + i);
@@ -412,7 +422,7 @@ int sys_munprotect(void *addr, int len)
   pte_t *pte;
   uint i;
   uint int_addr= (uint)addr;
-  if(int_addr%PGSIZE ==0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+  if(int_addr%PGSIZE !=0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
     return -1;
   }  
   
