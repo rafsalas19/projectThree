@@ -385,17 +385,24 @@ copyout(pde_t *pgdir, uint va, void *p, uint len)
   return 0;
 }
 
-int sys_mprotect(void *addr, int len)
+int sys_mprotect(void *addr, int len)//insert max address space checking
 {
   struct proc *curproc = myproc();
   pde_t *pgdir = curproc->pgdir;
   pte_t *pte;
   uint i;
-  for(i = PGSIZE; i < len; i += PGSIZE){
-    pte = walkpgdir(pgdir, (void *)( (uint)addr + i), 0);
-    *pte &= ~PTE_W;
+  uint int_addr= (uint)addr;
+  if(int_addr%PGSIZE ==0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+    return -1;
   }
 
+  for(i = PGSIZE; i < len*PGSIZE; i += PGSIZE){
+    void * naddr = (void *)( int_addr + i);
+    pte = walkpgdir(pgdir, naddr, 0);
+    *pte &= ~PTE_W;
+  }
+  curproc->pgdir = pgdir;
+  lcr3(V2P(curproc->pgdir));
   return 0;
 }
 int sys_munprotect(void *addr, int len)
@@ -404,10 +411,18 @@ int sys_munprotect(void *addr, int len)
   pde_t *pgdir = curproc->pgdir;
   pte_t *pte;
   uint i;
-  for(i = PGSIZE; i < len; i += PGSIZE){
-    pte = walkpgdir(pgdir, (void *)( (uint)addr + i), 0);
+  uint int_addr= (uint)addr;
+  if(int_addr%PGSIZE ==0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+    return -1;
+  }  
+  
+  for(i = PGSIZE; i < len*PGSIZE; i += PGSIZE){
+    void * naddr = (void *)( int_addr + i);
+    pte = walkpgdir(pgdir, naddr, 0);    
     *pte |= PTE_W;
   }
+  curproc->pgdir = pgdir;
+  lcr3(V2P(curproc->pgdir));
   return 0;
 }
 
