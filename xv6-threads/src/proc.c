@@ -221,6 +221,35 @@ fork(void)
   return pid;
 }
 
+int sys_clone(void){
+  char* charFcn;
+  char* charg1;
+  char* charg2;
+  char* chstack;
+  if(argptr(0, &charFcn, 1) < 0 || argptr(1, &charg1, 1)<0 || argptr(2, &charg2, 1)<0 || argptr(3, &chstack, 1)<0){
+    return -1;
+  }
+  
+
+
+  int pid =0;
+
+  return pid;
+}
+
+int sys_join(void){
+  char* chstack;
+  if(argptr(0, &chstack, 1) < 0 ){
+    return -1;
+  }
+
+
+  int pid =0;
+
+  return pid;
+}
+
+
 // Exit the current process.  Does not return.
 // An exited process remains in the zombie state
 // until its parent calls wait() to find out it exited.
