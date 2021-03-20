@@ -391,8 +391,9 @@ int sys_mprotect(void)//(void *addr, int len)//insert max address space checking
   int len;
   void *addr;
   char* argaddr;
-  if(argint(1, &len) < 0 || argptr(0, &argaddr, 1) < 0)
-    return -2;
+  if(argint(1, &len) < 0 || argptr(0, &argaddr, 1) < 0){
+    return -1;
+  }
   addr= (void*) argaddr;
 
   struct proc *curproc = myproc();
@@ -400,13 +401,12 @@ int sys_mprotect(void)//(void *addr, int len)//insert max address space checking
   pte_t *pte;
   uint i;
   uint int_addr= (uint)addr;
-  cprintf( "print addr %d %d\n", int_addr, len);
-  if(int_addr%PGSIZE ==0 ){//|| int_addr <0x1000) || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+  //cprintf( "print addr %d %d\n", int_addr, len);
+  if(int_addr%PGSIZE !=0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz|| len < 1 ){
     return -1;
   }
-  return int_addr;
 
-  for(i = PGSIZE; i < len*PGSIZE; i += PGSIZE){
+  for(i = 0; i < len*PGSIZE; i += PGSIZE){
     void * naddr = (void *)( int_addr + i);
     pte = walkpgdir(pgdir, naddr, 0);
     *pte &= ~PTE_W;
@@ -415,18 +415,26 @@ int sys_mprotect(void)//(void *addr, int len)//insert max address space checking
   lcr3(V2P(curproc->pgdir));
   return 0;
 }
-int sys_munprotect(void *addr, int len)
+int sys_munprotect(void)
 {
+  int len;
+  void *addr;
+  char* argaddr;
+  if(argint(1, &len) < 0 || argptr(0, &argaddr, 1) < 0){
+    return -1;
+  }
+  addr= (void*) argaddr;
+
   struct proc *curproc = myproc();
   pde_t *pgdir = curproc->pgdir;
   pte_t *pte;
   uint i;
   uint int_addr= (uint)addr;
-  if(int_addr%PGSIZE !=0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz ){
+  if(int_addr%PGSIZE !=0 || int_addr <0x1000 || int_addr>= (curproc->sz*PGSIZE) || (int_addr +(len*PGSIZE)) >= curproc->sz|| len < 1 ){
     return -1;
-  }  
+  }
   
-  for(i = PGSIZE; i < len*PGSIZE; i += PGSIZE){
+  for(i = 0; i < len*PGSIZE; i += PGSIZE){
     void * naddr = (void *)( int_addr + i);
     pte = walkpgdir(pgdir, naddr, 0);    
     *pte |= PTE_W;
