@@ -226,13 +226,55 @@ int sys_clone(void){
   char* charg1;
   char* charg2;
   char* chstack;
+  int pid =0;
+  struct proc *np;
+  struct proc *curproc = myproc();
+  
   if(argptr(0, &charFcn, 1) < 0 || argptr(1, &charg1, 1)<0 || argptr(2, &charg2, 1)<0 || argptr(3, &chstack, 1)<0){
     return -1;
   }
+  //load the stack
+
+  // Allocate process.
+  if((np = allocproc()) == 0){
+    return -1;
+  }
   
+  // point to parent procs pg->dir
+  np->pgdir= curproc->pgdir; 
+  
+  np->sz = curproc->sz;
+  np->parent = curproc;
+  *np->tf = *curproc->tf;
+
+  // Clear %eax so that fork returns 0 in the child.
+  np->tf->eax = 0;
+
+  //do I need to make the trap frame eip point to the function
+  np->tf->eip = (uint)charFcn;
+  np->tf->ebp = (uint)chstack;
+  //np->tf->esp = (uint);
+
+//  for(i = 0; i < NOFILE; i++)
+    //if(curproc->ofile[i])
+    //  np->ofile[i] = filedup(curproc->ofile[i]);
+  //np->cwd = idup(curproc->cwd);
+
+  for(int i = 0; i < NOFILE; i++)
+    if(curproc->ofile[i])
+      np->ofile[i] = curproc->ofile[i];
+  np->cwd = curproc->cwd;
 
 
-  int pid =0;
+  safestrcpy(np->name, curproc->name, sizeof(curproc->name));
+
+  pid = np->pid;
+
+  acquire(&ptable.lock);
+
+  np->state = RUNNABLE;
+
+  release(&ptable.lock);
 
   return pid;
 }
