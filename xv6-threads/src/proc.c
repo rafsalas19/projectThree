@@ -229,12 +229,11 @@ int sys_clone(void){
   int pid =0;
   struct proc *np;
   struct proc *curproc = myproc();
-  
   if(argptr(0, &charFcn, 1) < 0 || argptr(1, &charg1, 1)<0 || argptr(2, &charg2, 1)<0 || argptr(3, &chstack, 1)<0){
     return -1;
   }
-  //load the stack
-
+  
+  
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
@@ -249,11 +248,17 @@ int sys_clone(void){
 
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
+  
+  //load the stack
+  uint *ustack = (uint*) chstack;
+  ustack[0] = 0xffffffff;  // fake return PC
+  ustack[1] = (uint)charg1;
+  ustack[2] = (uint)charg2;
+  
+  np->tf->eip = (uint)charFcn;//set eip to function address
+  //np->tf->ebp = (uint)chstack; //set base pointer to the bottom of stack
+  np->tf->esp = (uint)ustack;//(uint)&(ustack[2]);
 
-  //do I need to make the trap frame eip point to the function
-  np->tf->eip = (uint)charFcn;
-  np->tf->ebp = (uint)chstack;
-  //np->tf->esp = (uint);
 
 //  for(i = 0; i < NOFILE; i++)
     //if(curproc->ofile[i])
@@ -284,11 +289,45 @@ int sys_join(void){
   if(argptr(0, &chstack, 1) < 0 ){
     return -1;
   }
+  
+  struct proc *p;
+  int havekids, pid;
+  struct proc *curproc = myproc();
+  
+  acquire(&ptable.lock);
+  for(;;){
+    // Scan through table looking for exited children.
+    havekids = 0;
+    for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+      if(p->parent != curproc && p->pgdir!=curproc->pgdir)
+        continue;
+      havekids = 1;
+      if(p->state == ZOMBIE ){// ensure that this isn't a fork by checking to see if they share the same page directory
+        // Found one.
+        pid = p->pid;
+        kfree(p->kstack);
+        p->kstack = 0;
+        p->pid = 0;
+        p->parent = 0;
+        p->name[0] = 0;
+        p->killed = 0;
+        p->state = UNUSED;
+        curproc->tf->eax = (uint)chstack;//not sure if this is right?
+        release(&ptable.lock);
+        return pid;
+      }
+    }
 
+    // No point waiting if we don't have any children.
+    if(!havekids || curproc->killed){
+      release(&ptable.lock);
+      return -1;
+    }
 
-  int pid =0;
+    // Wait for children to exit.  (See wakeup1 call in proc_exit.)
+    sleep(curproc, &ptable.lock);  //DOC: wait-sleep
+  }
 
-  return pid;
 }
 
 
@@ -352,10 +391,10 @@ wait(void)
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc)
+      if(p->parent != curproc && p->pgdir==curproc->pgdir)
         continue;
       havekids = 1;
-      if(p->state == ZOMBIE){
+      if(p->state == ZOMBIE ){
         // Found one.
         pid = p->pid;
         kfree(p->kstack);

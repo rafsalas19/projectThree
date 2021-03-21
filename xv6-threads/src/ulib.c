@@ -107,11 +107,20 @@ memmove(void *vdst, const void *vsrc, int n)
 
 int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2)
 {
-
-  return 0;
+  void * stack = malloc(4096);
+  if(stack<0){
+    return -1;
+  }
+  int pid = clone(start_routine, arg1, arg2, stack); 
+  
+  return pid;
 }
 
 int thread_join(){
+
+  void * stack;
+  join(&stack);
+  free(stack);
   return 0;
 }
 
