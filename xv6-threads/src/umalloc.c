@@ -6,6 +6,12 @@
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
+/*lock_t mallocLock;
+void malloLock_init(){
+  lock_init(mallocLock);
+}
+*/
+
 typedef long Align;
 
 union header {
@@ -84,7 +90,13 @@ malloc(uint nbytes)
       return (void*)(p + 1);
     }
     if(p == freep)
+      //if(myproc()->parent){
+      //  lock_acquire( &mallocLock);
+      //}
       if((p = morecore(nunits)) == 0)
         return 0;
+      //if(myproc()->parent){
+      //  lock_release(&mallocLock);
+      //}
   }
 }

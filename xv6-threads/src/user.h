@@ -1,6 +1,12 @@
 struct stat;
 struct rtcdate;
 
+typedef struct __lock_t {
+  int ticket;
+  int turn;
+} lock_t;
+
+
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
@@ -37,10 +43,11 @@ char* gets(char*, int max);
 uint strlen(const char*);
 void* memset(void*, int, uint);
 void* malloc(uint);
+//void malloLock_init();
 void free(void*);
 int atoi(const char*);
 int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2);
 int thread_join();
-//void lock_acquire(lock_t *);
-//void lock_release(lock_t *);
-//void lock_init(lock_t *);
+void lock_acquire(lock_t *tlock);
+void lock_release(lock_t *tlock);
+void lock_init(lock_t *tlock);

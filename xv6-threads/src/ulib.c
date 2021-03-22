@@ -104,7 +104,7 @@ memmove(void *vdst, const void *vsrc, int n)
     *dst++ = *src++;
   return vdst;
 }
-
+ 
 int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2)
 {
   void * stack = malloc(4096);
@@ -124,8 +124,27 @@ int thread_join(){
   return 0;
 }
 
-//void lock_acquire(lock_t *){}
+static inline int fetch_and_add(int* variable, int value)
+{
+    __asm__ volatile("lock; xaddl %0, %1"
+      : "+r" (value), "+m" (*variable) // input + output
+      : // No input-only
+      : "memory"
+    );
+    return value;
+}
 
-//void lock_release(lock_t *){}
+void lock_acquire(lock_t *tlock){
+  int myturn = fetch_and_add(&tlock->ticket,1);
+  while (tlock->turn != myturn)
+    ; // spin
+}
 
-//void lock_init(lock_t *){}
+void lock_release(lock_t *tlock){
+  tlock->turn = tlock->turn + 1;
+}
+
+void lock_init(lock_t * tlock){
+  tlock->ticket = 0;
+  tlock->turn =0;
+}
