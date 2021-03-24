@@ -108,6 +108,7 @@ memmove(void *vdst, const void *vsrc, int n)
 int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2)
 {
   void * stack = malloc(4096);
+  printf(1,"stack address: %d\n",(uint)stack);
   if(stack<0){
     return -1;
   }
@@ -118,9 +119,10 @@ int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2)
 
 int thread_join(){
 
-  void * stack;
-  join(&stack);
-  free(stack);
+  void ** stack = (void**)malloc(sizeof(void*));
+  join(stack);
+  printf(1, "in join %d\n", (uint)(stack));
+  //free(*stack);
   return 0;
 }
 

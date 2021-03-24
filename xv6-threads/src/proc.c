@@ -226,7 +226,7 @@ int sys_clone(void){
   char* charg1;
   char* charg2;
   char* chstack;
-  int pid =0;
+  int i, pid =0;
   struct proc *np;
   struct proc *curproc = myproc();
   if(argptr(0, &charFcn, 1) < 0 || argptr(1, &charg1, 1)<0 || argptr(2, &charg2, 1)<0 || argptr(3, &chstack, 1)<0){
@@ -250,26 +250,20 @@ int sys_clone(void){
   np->tf->eax = 0;
   
   //load the stack
-  uint *ustack = (uint*) chstack;
-  ustack[0] = 0xffffffff;  // fake return PC
-  ustack[1] = (uint)charg1;
-  ustack[2] = (uint)charg2;
+  uint *ustack = (uint*) chstack + (PGSIZE/sizeof(uint));
+  *(ustack-1) = (uint)charg2; //argument 2 bottom
+  *(ustack-2) = (uint)charg1; //argument 1
+  *(ustack-3) = 0xffffffff;  // fake return PC top
   
+  np->tf->esp = (uint)(ustack-3);//set stack pointer  
+  cprintf("stack ptr in syscall create: %d %d\n",np->tf->esp ,np->pid);
   np->tf->eip = (uint)charFcn;//set eip to function address
-  //np->tf->ebp = (uint)chstack; //set base pointer to the bottom of stack
-  np->tf->esp = (uint)ustack;//(uint)&(ustack[2]);
 
-
-//  for(i = 0; i < NOFILE; i++)
-    //if(curproc->ofile[i])
-    //  np->ofile[i] = filedup(curproc->ofile[i]);
-  //np->cwd = idup(curproc->cwd);
-
-  for(int i = 0; i < NOFILE; i++)
+  
+  for(i = 0; i < NOFILE; i++)
     if(curproc->ofile[i])
-      np->ofile[i] = curproc->ofile[i];
-  np->cwd = curproc->cwd;
-
+      np->ofile[i] = filedup(curproc->ofile[i]);
+  np->cwd = idup(curproc->cwd);
 
   safestrcpy(np->name, curproc->name, sizeof(curproc->name));
 
@@ -285,7 +279,7 @@ int sys_clone(void){
 }
 
 int sys_join(void){
-  char* chstack;
+  char* chstack ;
   if(argptr(0, &chstack, 1) < 0 ){
     return -1;
   }
@@ -299,20 +293,21 @@ int sys_join(void){
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc && p->pgdir!=curproc->pgdir)
+      if(p->parent != curproc && p->pgdir!=curproc->pgdir)// ensure that this isn't a fork by checking to see if they share the same page directory
         continue;
       havekids = 1;
-      if(p->state == ZOMBIE ){// ensure that this isn't a fork by checking to see if they share the same page directory
+      if(p->state == ZOMBIE ){
         // Found one.
         pid = p->pid;
-        kfree(p->kstack);
-        p->kstack = 0;
+        //kfree(p->kstack);
+        //p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        curproc->tf->eax = (uint)chstack;//not sure if this is right?
+        *chstack = (char*)(p->tf->esp- (4096-16));
+        cprintf("return arg: %d  pid %d\n",p->tf->esp-(4096-44) ,pid );
         release(&ptable.lock);
         return pid;
       }
