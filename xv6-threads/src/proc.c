@@ -20,6 +20,7 @@ extern void trapret(void);
 
 static void wakeup1(void *chan);
 
+
 void
 pinit(void)
 {
@@ -223,17 +224,15 @@ fork(void)
 
 int sys_clone(void){
   char* charFcn;
-  char* charg1;
-  char* charg2;
   char* chstack;
   int i, pid =0;
   struct proc *np;
   struct proc *curproc = myproc();
-  if(argptr(0, &charFcn, 1) < 0 || argptr(1, &charg1, 1)<0 || argptr(2, &charg2, 1)<0 || argptr(3, &chstack, 1)<0){
+  int arg1 =0;
+  int arg2 =0;
+  if(argptr(0, &charFcn, 1) < 0 || argint(1, &arg1)<0  || argint(2, &arg2)<0 || argptr(3, &chstack, 1)<0){
     return -1;
   }
-  
-  
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
@@ -250,13 +249,12 @@ int sys_clone(void){
   np->tf->eax = 0;
   
   //load the stack
-  uint *ustack = (uint*) chstack + (PGSIZE/sizeof(uint));
-  *(ustack-1) = (uint)charg2; //argument 2 bottom
-  *(ustack-2) = (uint)charg1; //argument 1
+  int *ustack = (int*) chstack + (PGSIZE/sizeof(int));
+  *(ustack-1) = arg2; //argument 2 bottom
+  *(ustack-2) = arg1; //argument 1
   *(ustack-3) = 0xffffffff;  // fake return PC top
   
   np->tf->esp = (uint)(ustack-3);//set stack pointer  
-  cprintf("stack ptr in syscall create: %d %d\n",np->tf->esp ,np->pid);
   np->tf->eip = (uint)charFcn;//set eip to function address
 
   
@@ -299,7 +297,7 @@ int sys_join(void){
       if(p->state == ZOMBIE ){
         // Found one.
         pid = p->pid;
-        *((int*)chstack) = (p->tf->esp - (4096-44));
+        *((int*)chstack) = (p->tf->ebp - (4096-16));
         kfree(p->kstack);
         p->kstack = 0;
         p->pid = 0;
@@ -308,7 +306,7 @@ int sys_join(void){
         p->killed = 0;
         p->state = UNUSED;
         
-        cprintf("return arg: %d  pid %d\n",p->tf->esp-(4096-44) ,pid );
+
         release(&ptable.lock);
         return pid;
       }

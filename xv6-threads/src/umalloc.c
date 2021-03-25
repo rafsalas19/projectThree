@@ -3,6 +3,7 @@
 #include "user.h"
 #include "param.h"
 
+
 // Memory allocator by Kernighan and Ritchie,
 // The C programming Language, 2nd ed.  Section 8.7.
 
@@ -89,14 +90,11 @@ malloc(uint nbytes)
       freep = prevp;
       return (void*)(p + 1);
     }
-    if(p == freep)
-      //if(myproc()->parent){
-      //  lock_acquire( &mallocLock);
-      //}
+    if(p == freep){
+
       if((p = morecore(nunits)) == 0)
         return 0;
-      //if(myproc()->parent){
-      //  lock_release(&mallocLock);
-      //}
+
+    }
   }
 }

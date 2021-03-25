@@ -12,6 +12,7 @@
 struct gatedesc idt[256];
 extern uint vectors[];  // in vectors.S: array of 256 entry pointers
 struct spinlock tickslock;
+struct spinlock sbrkLock;
 uint ticks;
 
 void
@@ -22,7 +23,7 @@ tvinit(void)
   for(i = 0; i < 256; i++)
     SETGATE(idt[i], 0, SEG_KCODE<<3, vectors[i], 0);
   SETGATE(idt[T_SYSCALL], 1, SEG_KCODE<<3, vectors[T_SYSCALL], DPL_USER);
-
+  initlock(&sbrkLock, "sbrkLock");// malloc lock
   initlock(&tickslock, "time");
 }
 

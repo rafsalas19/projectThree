@@ -7,6 +7,8 @@
 #include "mmu.h"
 #include "proc.h"
 
+
+
 int
 sys_fork(void)
 {
@@ -47,12 +49,14 @@ sys_sbrk(void)
 {
   int addr;
   int n;
-
+  acquire(&sbrkLock);
   if(argint(0, &n) < 0)
     return -1;
   addr = myproc()->sz;
   if(growproc(n) < 0)
     return -1;
+    
+  release(&sbrkLock);
   return addr;
 }
 

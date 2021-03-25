@@ -6,7 +6,6 @@ typedef struct __lock_t {
   int turn;
 } lock_t;
 
-
 // system calls
 int fork(void);
 int exit(void) __attribute__((noreturn));
