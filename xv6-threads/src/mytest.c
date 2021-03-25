@@ -14,7 +14,7 @@ void threadfunc(void *arg1, void *arg2) {
   exit();
 }
 void threadfunc2(void *arg1, void *arg2) {
-  //global = 12345;
+  global = 12345;
   printf(1,"hello: %d %d\n",(int)arg1,(int)arg2);
   exit();
 }

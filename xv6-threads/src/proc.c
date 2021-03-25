@@ -299,14 +299,15 @@ int sys_join(void){
       if(p->state == ZOMBIE ){
         // Found one.
         pid = p->pid;
-        //kfree(p->kstack);
-        //p->kstack = 0;
+        *((int*)chstack) = (p->tf->esp - (4096-44));
+        kfree(p->kstack);
+        p->kstack = 0;
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
-        *chstack = (char*)(p->tf->esp- (4096-16));
+        
         cprintf("return arg: %d  pid %d\n",p->tf->esp-(4096-44) ,pid );
         release(&ptable.lock);
         return pid;
