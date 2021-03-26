@@ -6,32 +6,82 @@
 #include "fcntl.h"
 #include "syscall.h"
 
+/*tests
+-check stack size
+-malloc
+-fork
+
+*/
+void check_fork();
+
 int global;
 
-void threadfunc(void *arg1, void *arg2) {
-  *(int *)arg2 = (int)arg1;
+void threadfunc3(void *arg1, void *arg2) {
+  
+  int pid = thread_create(threadfunc2, arg1, arg2);
+  printf(1,"parent this is childs return pid %d\n", pid);
+
+  thread_join();
+  
+  
+  
   exit();
 }
+
 void threadfunc2(void *arg1, void *arg2) {
-  global = 12345;
+  int *mal = malloc(sizeof(int)); 
+  *mal =2;
+  
+  global = (int)arg1 + (int)arg2;
+  
+  global = global *(*mal);
   exit();
 }
+
+
+void threadfunc(void *arg1, void *arg2) {
+  
+  int pid = thread_create(threadfunc2, arg1, arg2);
+  printf(1,"parent this is childs return pid %d\n", pid);
+
+  thread_join();
+  
+  
+  
+  exit();
+}
+
+void check_fork(){
+  int cpid= fork();
+  //printf(1,"global = %d\n",global);
+  if(cpid==0){
+    printf(1,"hello in child\n");
+    exit();
+  }else{
+    printf(1,"parent\n");
+  }
+   //thread_join();
+  wait();
+
+
+}
+
+void thread_check(){
+  int arg1 = 0;
+  int arg2 = 2;
+  int pid = thread_create(threadfunc, (void*)arg1, (void *)arg2);
+  printf(1,"parent this is childs return pid %d\n", pid);
+
+  thread_join();
+
+
+}
+
 
 int main(int argc, char *argv[])
 {
-  int i = 0;
 
-  int pid = thread_create(threadfunc, (void*)314159, (void *)&i);
-  printf(1,"parent this is childs return pid %d\n", pid);
-  
-  pid = thread_create(threadfunc2, 0, 0);
-  printf(1,"parent this is childs return pid2 %d\n", pid);
-  
-
-  thread_join();
-  thread_join();
-
-  printf(1, "XV6_TEST_OUTPUT : global = %d i = %d\n", global, i);
-
+  //check_fork();
+  thread_check();
   exit();
 }

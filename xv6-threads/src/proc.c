@@ -200,7 +200,7 @@ fork(void)
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
+  np->isthread = 0; //not a thread
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
 
@@ -233,18 +233,26 @@ int sys_clone(void){
   if(argptr(0, &charFcn, 1) < 0 || argint(1, &arg1)<0  || argint(2, &arg2)<0 || argptr(3, &chstack, 1)<0){
     return -1;
   }
+//    cprintf("size of stack %d\n",strlen(chstack));
+//  if(sizeof(chstack)< PGSIZE || sizeof(chstack)>PSIZE*2 ){
+//    return -1;
+//  }
+  
+  
+  
   // Allocate process.
   if((np = allocproc()) == 0){
     return -1;
   }
-  
+
   // point to parent procs pg->dir
   np->pgdir= curproc->pgdir; 
   
+  np->threadstack = chstack;
   np->sz = curproc->sz;
   np->parent = curproc;
   *np->tf = *curproc->tf;
-
+  np->isthread = 1;
   // Clear %eax so that fork returns 0 in the child.
   np->tf->eax = 0;
   
@@ -291,13 +299,13 @@ int sys_join(void){
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc && p->pgdir!=curproc->pgdir)// ensure that this isn't a fork by checking to see if they share the same page directory
+      if(p->parent != curproc || p->isthread !=1)// ensure that this isn't a fork by checking to see if they share the same page directory
         continue;
       havekids = 1;
       if(p->state == ZOMBIE ){
         // Found one.
         pid = p->pid;
-        *((int*)chstack) = (p->tf->ebp - (4096-16));
+        *((int*)chstack) =  (int)p->threadstack;//(p->tf->ebp - (4096-16));
         kfree(p->kstack);
         p->kstack = 0;
         p->pid = 0;
@@ -360,15 +368,29 @@ exit(void)
   for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
     if(p->parent == curproc){
       p->parent = initproc;
+      p->isthread =0;
       if(p->state == ZOMBIE)
         wakeup1(initproc);
     }
   }
-
+ 
+   //   if (curproc->pid==3)cprintf("pid for exit %d\n", curproc->pid);
   // Jump into the scheduler, never to return.
   curproc->state = ZOMBIE;
   sched();
   panic("zombie exit");
+}
+
+int referenceCheck( struct proc *evalProc){
+  struct proc *p;
+  for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
+    if(p == evalProc)
+        continue;
+    if(evalProc->pgdir == p->pgdir){
+      return 1;
+    }
+  }
+ return 0;
 }
 
 // Wait for a child process to exit and return its pid.
@@ -379,13 +401,14 @@ wait(void)
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
-  
+ // if (curproc->pid==4)cprintf("pid for wait %d\n", curproc->pid);
   acquire(&ptable.lock);
   for(;;){
     // Scan through table looking for exited children.
     havekids = 0;
     for(p = ptable.proc; p < &ptable.proc[NPROC]; p++){
-      if(p->parent != curproc && p->pgdir==curproc->pgdir)
+      //if (p->pid>2)cprintf("pid for wait %d\n", p->pid);
+      if(p->parent != curproc || p->isthread ==1)
         continue;
       havekids = 1;
       if(p->state == ZOMBIE ){
@@ -393,7 +416,9 @@ wait(void)
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
-        freevm(p->pgdir);
+        if(referenceCheck(p) == 0){
+          freevm(p->pgdir);
+        }
         p->pid = 0;
         p->parent = 0;
         p->name[0] = 0;

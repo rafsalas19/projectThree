@@ -118,7 +118,17 @@ int thread_create(void (*start_routine)(void *, void *), void*arg1, void *arg2)
 int thread_join(){
 
   void ** stack = (void**)malloc(sizeof(void*));
+  
+  if(stack <0){
+    return -1;
+  }
+  
   int pid = join(stack);
+
+  if((int *)*stack == 0)
+  {
+    return -1;
+  }
   //printf(1, "in join %d\n", (uint)(*stack));
   free(*stack);
   return pid;
